@@ -9,3 +9,9 @@ _C.*
 outputs/*
 checkpoints/*.pt
 demo/backend/checkpoints/*.pt
+*.npy
+*.out
+*.png
+*.ipynb
+*.sh
+EE5239_project/results*

@@ -154,13 +154,12 @@ def write_dataset(dataset, path):
 
     for i in tqdm(range(len(dataset))):
 
-        image, mask, input_point = dataset[i]
-        folder = Path(f"{path}data_{i}/")
+        image, mask = dataset[i]
+        folder = path /f"data_{i}/"
         folder.mkdir(exist_ok=True)
         
         np.save(folder / "imgs.npy", image)
         np.save(folder / "mask.npy", mask)
-        np.save(folder / "point.npy", input_point)
 
 
 def optimizer_state_size_mb(optimizer):

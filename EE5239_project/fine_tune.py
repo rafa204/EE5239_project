@@ -20,16 +20,14 @@ monitor = ZeusMonitor(gpu_indices=[0])
 
 cfg = Config().parse()
 
-results_path = Path('results/saved_results3')/cfg.name
+results_path = Path('./results/saved_results3')/cfg.name
 results_path.mkdir(parents=True, exist_ok=True)
 
 save_configs(cfg, results_path/"params.txt")
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-dataset_path = "/users/0/avela019/Desktop/EE5561_project/BRATS20/BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData/"
-sam2_path = "/users/0/avela019/EE5239_project/sam2/"
-data_path = "/users/0/avela019/EE5239_project/sam2/EE5239_project/data_long/"
+dataset_path = Path("/users/0/avela019/Desktop/EE5561_project/BRATS20/BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData/")
+data_path = Path("./data2/")
 
 #========= Setup dataset ===========
 
@@ -113,15 +111,16 @@ for epoch in range(cfg.n_epochs):
     avg_loss = 0
     with torch.amp.autocast('cuda'): # cast to mix precision
 
-        # if(epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1):
-        #     val_loss = test_model(predictor, val_loader)
-        #     val_losses.append([val_loss,epoch])
-        #     np.save(results_path / "val_loss.npy", np.array(val_losses))
-        #     plot_loss_curves(val_losses, trn_losses, results_path)
-        #     best_epoch = val_loss < best_val_loss
-        #     if best_epoch:
-        #         best_val_loss = val_loss
-        #         plot_examples(predictor, val_dataset, plot_indices, results_path)     
+        if(epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1):
+            
+            val_loss = test_model(predictor, val_loader)
+            val_losses.append([val_loss,epoch])
+            np.save(results_path / "val_loss.npy", np.array(val_losses))
+            plot_loss_curves(val_losses, trn_losses, results_path)
+            best_epoch = val_loss < best_val_loss
+            if best_epoch:
+                best_val_loss = val_loss
+                plot_examples(predictor, val_dataset, plot_indices, results_path)     
 
         predictor.model.train()
         if(cfg.tqdm):

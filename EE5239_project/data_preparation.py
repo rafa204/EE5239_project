@@ -15,7 +15,7 @@ class BRATS_dataset(Dataset):
     BRATS 2020 2.5D dataset
     """
     def __init__(self, dataset_path, device, num_volumes = None, slices_per_volume = 1, num_slices = None):
-        self.dataset_path = Path(dataset_path)
+        self.dataset_path = dataset_path
         self.device = device
     
         # Subdirectories (one per volume)
@@ -58,19 +58,23 @@ class BRATS_dataset(Dataset):
         
         flat_indices = np.flatnonzero(mask)
 
+        # Generate a single point inside the mask and get the corresponding slice
         rng = np.random.default_rng(idx)
         i = rng.integers(0,len(flat_indices),1)
         x,y,z = np.unravel_index(flat_indices[i], mask.shape)
 
         imgs_out = imgs[:, :, z, 0:3].squeeze()
         masks_out = mask[:, :, z].squeeze()
-        input_point = np.array([[x,y]]).squeeze(0).T
 
+        #Crop
+        cx, cy = mask.shape[0]//2,  mask.shape[1]//2
+        masks_out = masks_out[cx-80:cx+80, cy-112:cy+112]
+        imgs_out = imgs_out[cx-80:cx+80, cy-112:cy+112, :]
+
+        #Normalize
         imgs_out = (imgs_out/imgs_out.max() * 255).astype(np.uint8)
 
-        #masks_out = torch.tensor(masks_out, dtype=torch.float32, device=self.device)
-
-        return imgs_out, masks_out, input_point
+        return imgs_out, masks_out
     
 
 class BRATS_dataset_2D(Dataset):
@@ -84,10 +88,6 @@ class BRATS_dataset_2D(Dataset):
         return len(self.subdirs)
 
     def transform(self, image, mask):
-
-        cx, cy = mask.shape[0]//2,  mask.shape[1]//2
-        mask = mask[cx-80:cx+80, cy-112:cy+112]
-        image = image[cx-80:cx+80, cy-112:cy+112, :]
 
         # Random horizontal flipping
         if random.random() > 0.5:

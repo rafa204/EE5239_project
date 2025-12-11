@@ -20,14 +20,14 @@ monitor = ZeusMonitor(gpu_indices=[0])
 
 cfg = Config().parse()
 
-results_path = Path('./results/saved_results3')/cfg.name
+results_path = Path('./results/saved_results')/cfg.name
 results_path.mkdir(parents=True, exist_ok=True)
 
 save_configs(cfg, results_path/"params.txt")
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 dataset_path = Path("/users/0/avela019/Desktop/EE5561_project/BRATS20/BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData/")
-data_path = Path("./data2/")
+data_path = Path("./training_data/")
 
 #========= Setup dataset ===========
 
@@ -110,7 +110,8 @@ for epoch in range(cfg.n_epochs):
     
     avg_loss = 0
     with torch.amp.autocast('cuda'): # cast to mix precision
-
+        
+        #Validation before training so we can see the performance of the default model
         if(epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1):
             
             val_loss = test_model(predictor, val_loader)
@@ -123,15 +124,17 @@ for epoch in range(cfg.n_epochs):
                 plot_examples(predictor, val_dataset, plot_indices, results_path)     
 
         predictor.model.train()
+
         if(cfg.tqdm):
             train_bar = tqdm(train_loader, desc="[Training]")
         else: train_bar = train_loader
 
         itr=0
-        monitor.begin_window("epoch")
+        monitor.begin_window("epoch") #Track GPU metrics
 
         for image, mask, input_point in train_bar:
-            if itr%cfg.batch_size == 0:
+
+            if itr%cfg.batch_size == 0: #For batched data save loss values in list, then average
                 batch_loss_list = torch.zeros(cfg.batch_size)
 
             prd_mask = get_mask(image, input_point, predictor)
@@ -149,12 +152,12 @@ for epoch in range(cfg.n_epochs):
             itr+=1
 
     measurement = monitor.end_window("epoch")
-    print(f"Epoch {epoch}: {measurement.time} s, {measurement.total_energy} J")
-    # print("Optimizer state MB:", optimizer_state_size_mb(optimizer))
+    print(f"--- Epoch {epoch}: Time = {measurement.time :.3f} s, Energy = {measurement.total_energy:.3f} J")
+    print("Optimizer state in MB:", optimizer_state_size_mb(optimizer))
 
     trn_losses.append([avg_loss,epoch])
     np.save(results_path / "train_loss.npy", np.array(trn_losses))
-    print(f"---Epoch {epoch}: train loss = {avg_loss:.3f}" + "---")
+    print(f"train loss = {avg_loss:.3f}" + "---")
     if cfg.LR_sch:
         scheduler.step()
 

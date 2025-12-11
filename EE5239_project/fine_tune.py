@@ -13,6 +13,10 @@ from peft import LoraConfig, get_peft_model
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts as cosAnnealer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import time
+from zeus.monitor import ZeusMonitor
+
+# All four GPUs are measured simultaneously.
+monitor = ZeusMonitor(gpu_indices=[0])
 
 cfg = Config().parse()
 
@@ -103,20 +107,21 @@ best_val_loss = np.inf
 torch.cuda.reset_peak_memory_stats()
 
 print("*"*20 + "  Starting training  " + "*"*20)
+monitor.begin_window("training")
 for epoch in range(cfg.n_epochs):
     
     avg_loss = 0
     with torch.amp.autocast('cuda'): # cast to mix precision
 
-        if(epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1):
-            val_loss = test_model(predictor, val_loader)
-            val_losses.append([val_loss,epoch])
-            np.save(results_path / "val_loss.npy", np.array(val_losses))
-            plot_loss_curves(val_losses, trn_losses, results_path)
-            best_epoch = val_loss < best_val_loss
-            if best_epoch:
-                best_val_loss = val_loss
-                plot_examples(predictor, val_dataset, plot_indices, results_path)     
+        # if(epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1):
+        #     val_loss = test_model(predictor, val_loader)
+        #     val_losses.append([val_loss,epoch])
+        #     np.save(results_path / "val_loss.npy", np.array(val_losses))
+        #     plot_loss_curves(val_losses, trn_losses, results_path)
+        #     best_epoch = val_loss < best_val_loss
+        #     if best_epoch:
+        #         best_val_loss = val_loss
+        #         plot_examples(predictor, val_dataset, plot_indices, results_path)     
 
         predictor.model.train()
         if(cfg.tqdm):
@@ -124,7 +129,8 @@ for epoch in range(cfg.n_epochs):
         else: train_bar = train_loader
 
         itr=0
-        
+        monitor.begin_window("epoch")
+
         for image, mask, input_point in train_bar:
             if itr%cfg.batch_size == 0:
                 batch_loss_list = torch.zeros(cfg.batch_size)
@@ -141,10 +147,10 @@ for epoch in range(cfg.n_epochs):
                 scaler.update() # Mix precision
 
                 avg_loss+=loss.item()/len(train_loader)*cfg.batch_size
-
             itr+=1
 
-
+    measurement = monitor.end_window("epoch")
+    print(f"Epoch {epoch}: {measurement.time} s, {measurement.total_energy} J")
     # print("Optimizer state MB:", optimizer_state_size_mb(optimizer))
 
     trn_losses.append([avg_loss,epoch])
@@ -153,3 +159,5 @@ for epoch in range(cfg.n_epochs):
     if cfg.LR_sch:
         scheduler.step()
 
+measurement = monitor.end_window("training")
+print(f"Entire training: {measurement.time} s, {measurement.total_energy} J")

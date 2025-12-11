@@ -15,18 +15,13 @@ bs = 4
 
 configs = [
 
-    {"name": "pissa_0", "peft": "pissa", "batch_size": 8, "model": "l", "n_train": 64, "lr": 5e-5,},
-    {"name": "pissa_1", "peft": "pissa", "batch_size": 8, "model": "l", "n_train": 64, "lr": 1e-4,},
-    {"name": "pissa_2", "peft": "pissa", "batch_size": 8, "model": "l", "n_train": 64, "lr": 5e-4,},
-    {"name": "pissa_3", "peft": "pissa", "batch_size": 8, "model": "l", "n_train": 64, "lr": 1e-3,},
-    {"name": "pissa_4", "peft": "pissa", "batch_size": 4, "model": "l", "n_train": 32, "lr": 5e-5,},
-    {"name": "pissa_5", "peft": "pissa", "batch_size": 4, "model": "l", "n_train": 32, "lr": 1e-4,},
-    {"name": "pissa_6", "peft": "pissa", "batch_size": 4, "model": "l", "n_train": 32, "lr": 5e-4,},
-    {"name": "pissa_7", "peft": "pissa", "batch_size": 4, "model": "l", "n_train": 32, "lr": 1e-3,},
-    {"name": "pissa_8", "peft": "pissa", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-5,},
-    {"name": "pissa_9", "peft": "pissa", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-4,},
-    {"name": "pissa_10", "peft": "pissa", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-4,},
-    {"name": "pissa_11", "peft": "pissa", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-3,},
+    {"name": "fft_0", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-5,},
+    {"name": "fft_1", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-4,},
+    {"name": "fft_2", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-4,},
+
+    {"name": "lora_3", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-5,},
+    {"name": "lora_4", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-4,},
+    {"name": "lora_5", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-4,},
 
 
 ]

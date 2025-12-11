@@ -32,11 +32,10 @@ def get_mask(image, input_point, predictor):
 
 def get_batched_mask(image, input_point, predictor):
 
-    if torch.is_tensor(image):
-        image = [im.squeeze().cpu().numpy() for im in image]
-        #input_point = [p.cpu().numpy() for p in input_point]
+    if image.ndim == 4: #Batched mode
+        image = [im.cpu().numpy() for im in image]
         input_label = np.ones((len(image),1))
-    else:
+    else: #Single image mode
         image = [image]
         input_point = input_point[np.newaxis, :]
         input_label = np.ones((1,1))
@@ -46,15 +45,20 @@ def get_batched_mask(image, input_point, predictor):
     # prompt encoding
     mask_input, unnorm_coords, labels, unnorm_box = predictor._prep_prompts(input_point, input_label, box=None, mask_logits=None, normalize_coords=True)
     sparse_embeddings, dense_embeddings = predictor.model.sam_prompt_encoder(points=(unnorm_coords, labels),boxes=None,masks=None,)
+    high_res_feats = predictor._features["high_res_feats"]
 
-    # mask decoder
-    batched_mode = unnorm_coords.shape[0] > 1 # multi object prediction
-    high_res_features = [feat_level[-1].unsqueeze(0) for feat_level in predictor._features["high_res_feats"]]
-    low_res_masks, prd_scores, _, _ = predictor.model.sam_mask_decoder(image_embeddings=predictor._features["image_embed"][-1].unsqueeze(0),image_pe=predictor.model.sam_prompt_encoder.get_dense_pe(),sparse_prompt_embeddings=sparse_embeddings,dense_prompt_embeddings=dense_embeddings,multimask_output=True,repeat_image=batched_mode,high_res_features=high_res_features,)
+    low_res_masks, prd_scores, _, _ = predictor.model.sam_mask_decoder(
+        image_embeddings=predictor._features["image_embed"],
+        image_pe = predictor.model.sam_prompt_encoder.get_dense_pe(),
+        sparse_prompt_embeddings=sparse_embeddings,
+        dense_prompt_embeddings=dense_embeddings, 
+        multimask_output=False, # args.multimask_output if you want multiple masks
+        repeat_image=False,  # the image is already batched
+        high_res_features = high_res_feats
+    )
+
     prd_masks = predictor._transforms.postprocess_masks(low_res_masks, predictor._orig_hw[-1])# Upscale the masks to the original image resolution
-
     prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
-
     return prd_masks.squeeze()
 
 

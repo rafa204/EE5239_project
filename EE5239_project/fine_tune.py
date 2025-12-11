@@ -10,9 +10,7 @@ from utils import *
 from criterion import SoftDiceLoss
 from config import Config, save_configs
 from peft import LoraConfig, get_peft_model
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts as cosAnnealer
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import time
 from zeus.monitor import ZeusMonitor
 
 # All four GPUs are measured simultaneously.
@@ -20,7 +18,7 @@ monitor = ZeusMonitor(gpu_indices=[0])
 
 cfg = Config().parse()
 
-results_path = Path('./results/saved_results')/cfg.name
+results_path = Path('./results/saved_results_0')/cfg.name
 results_path.mkdir(parents=True, exist_ok=True)
 
 save_configs(cfg, results_path/"params.txt")
@@ -43,7 +41,7 @@ train_dataset, val_dataset, _ = random_split(full_dataset, [cfg.n_train, cfg.n_v
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=1)
 
-#========= Get SAM2 weights ===========
+#====== Get SAM2 weights ===========
 
 if cfg.model == "s":
     sam2_checkpoint = "../checkpoints/sam2.1_hiera_small.pt"
@@ -54,21 +52,17 @@ else:
 
 sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
 
-predictor = SAM2ImagePredictor(sam2_model)
-predictor.model.sam_mask_decoder.train(True) # enable training of mask decoder 
-predictor.model.sam_prompt_encoder.train(True) # enable training of prompt encoder
-
+# === SETUP LORA PARAMETERS ========
 if(cfg.peft == 'lora'):
     print("Using LoRA")
-    config = LoraConfig(
+    lora_config = LoraConfig(
         r=cfg.lora_rank,
         lora_alpha=32,
         target_modules=["q_proj", "v_proj"],
         lora_dropout=0.1,
         use_rslora=True
     )
-    lora_model = get_peft_model(predictor.model, config)
-    predictor.model = lora_model.to(device)
+    
 
 elif(cfg.peft == "pissa"):
     print("Using PISSA")
@@ -80,10 +74,15 @@ elif(cfg.peft == "pissa"):
     lora_dropout=0, # Since the component of the PiSSA adapter are the principal singular values and vectors, dropout should be set to 0 to avoid random discarding.
     target_modules=["q_proj", "k_proj"],
     )
-    lora_model = get_peft_model(predictor.model, lora_config)
-    predictor.model = lora_model.to(device)
+    
 
-print_trainable_parameters(predictor.model)
+sam2_model = get_peft_model(sam2_model, lora_config).to(device)
+print_trainable_parameters(sam2_model)
+predictor = SAM2ImagePredictor(sam2_model)
+
+for name, param in predictor.model.named_parameters():
+    if param.requires_grad:
+        print(name, param.data)
 
 #========= Training setup and loop ===========
 
@@ -97,7 +96,7 @@ if cfg.LR_sch:
 trn_losses = []
 val_losses = []
 
-rng = np.random.default_rng(4)
+rng = np.random.default_rng(5)
 plot_indices = rng.choice(np.arange(0, len(val_dataset)), size=10, replace=False)
 best_epoch = True
 best_val_loss = np.inf
@@ -163,3 +162,11 @@ for epoch in range(cfg.n_epochs):
 
 measurement = monitor.end_window("training")
 print(f"Entire training: {measurement.time} s, {measurement.total_energy} J")
+
+compute_metrics = np.zeros(3)
+compute_metrics[0] = measurement.time
+compute_metrics[1] = measurement.total_energy
+compute_metrics[2] = optimizer_state_size_mb(optimizer)
+
+np.save(results_path / "compute_metrics.npy", compute_metrics)
+

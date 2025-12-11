@@ -66,11 +66,6 @@ class BRATS_dataset(Dataset):
         imgs_out = imgs[:, :, z, 0:3].squeeze()
         masks_out = mask[:, :, z].squeeze()
 
-        #Crop
-        cx, cy = mask.shape[0]//2,  mask.shape[1]//2
-        masks_out = masks_out[cx-80:cx+80, cy-112:cy+112]
-        imgs_out = imgs_out[cx-80:cx+80, cy-112:cy+112, :]
-
         #Normalize
         imgs_out = (imgs_out/imgs_out.max() * 255).astype(np.uint8)
 
@@ -88,6 +83,10 @@ class BRATS_dataset_2D(Dataset):
         return len(self.subdirs)
 
     def transform(self, image, mask):
+
+        cx, cy = mask.shape[0]//2,  mask.shape[1]//2
+        mask = mask[cx-80:cx+80, cy-112:cy+112]
+        image = image[cx-80:cx+80, cy-112:cy+112, :]
 
         # Random horizontal flipping
         if random.random() > 0.5:

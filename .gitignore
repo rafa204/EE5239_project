@@ -17,3 +17,4 @@ demo/backend/checkpoints/*.pt
 EE5239_project/results*
 EE5239_project/training_data*
 EE5239_project/log*
+EE5239_project/wandb*

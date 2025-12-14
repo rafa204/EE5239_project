@@ -11,31 +11,33 @@ default_cfg = vars(Config().parse())
 param_list = ["name", "lr", "batch_size","LR_sch","n_train","n_val","peft","lora_rank", "model"]
 
 n = 16
-bs = 4
+bs = 2
 
 configs = [
 
-    {"name": "fft_0", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-5,},
-    {"name": "fft_1", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-4,},
-    {"name": "fft_2", "peft": "None", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-4,},
 
-    {"name": "lora_3", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-5,},
-    {"name": "lora_4", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 1e-4,},
-    {"name": "lora_5", "peft": "lora", "batch_size": 16, "model": "l", "n_train": 256, "lr": 5e-4,},
+    {"name": "fft_lr_0", "peft": "None", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-5,},
+    {"name": "fft_lr_1", "peft": "None", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-5,},
+    {"name": "fft_lr_2", "peft": "None", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-4,},
+    {"name": "fft_lr_3", "peft": "None", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-4,},
+    {"name": "fft_lr_4", "peft": "None", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-3,},
+
+    {"name": "lora_lr_0", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-5,},
+    {"name": "lora_lr_1", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-5,},
+    {"name": "lora_lr_2", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-4,},
+    {"name": "lora_lr_3", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-4,},
+    {"name": "lora_lr_4", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-3,},
+
+    {"name": "dora_lr_0", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-5,},
+    {"name": "dora_lr_1", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-5,},
+    {"name": "dora_lr_2", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-4,},
+    {"name": "dora_lr_3", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 5e-4,},
+    {"name": "dora_lr_4", "peft": "lora", "batch_size": bs, "model": "l", "n_train": 256, "lr": 1e-3,},
 
 
-]
+ ]
 
-#Saved_results3
-#0-3
-#n = 64
-#bs = 8
-#4-7
-# n = 32
-# bs = 4
-#8-11
-#n = 256
-#bs = 16
+
 
 TEMPLATE = "run.sh"
 

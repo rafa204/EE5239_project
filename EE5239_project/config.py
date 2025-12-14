@@ -8,11 +8,11 @@ class Config:
         
         #Setup parameters
         self.parser.add_argument('--name', type=str, default='test', help='results file directory')
-        self.parser.add_argument('--cuda', type=str, default='0', help='CUDA device to use')
         self.parser.add_argument('--write_data', type=int, default=0, help='Rewrite dataset')
         self.parser.add_argument('--peft', type=str, default='None', help='which type of peft')
         self.parser.add_argument('--lora_rank', type=int, default=16, help='Rank of LoRA matrices')
         self.parser.add_argument('--model', type=str, default="s", help='Small or large model')
+        self.parser.add_argument('--target_layers', type=int, default=0, help='0 for smaller amount of target layers, 1 for more')
 
         # Hyperparameters for leaning
         self.parser.add_argument('--n_data', type=int, default=369, help='number of data points')
@@ -25,10 +25,14 @@ class Config:
         self.parser.add_argument('--batch_size', type=int, default=1, help='batch size')
         self.parser.add_argument('--LR_sch', type=int, default=0, help='Is there LR schedule or not')
         self.parser.add_argument('--val_freq', type=int, default=5, help='Validation freq')
+        self.parser.add_argument('--dice_weight', type=float, default=1, help='Weight of dice loss')
+        self.parser.add_argument('--bce_weight', type=float, default=0, help='Weight of BCE loss')
+        self.parser.add_argument('--val', type=int, default=1, help='Validation or not')
 
         #other
         self.parser.add_argument('--tqdm', type=int, default=1, help='Loading bar or not (bar is bad for slurm)')
-    
+        self.parser.add_argument('--plot', type=int, default=0, help='Plot example results')
+        self.parser.add_argument('--wandb', type=int, default=0, help='Send to WANDB')
     
 
     def parse(self, args=None):

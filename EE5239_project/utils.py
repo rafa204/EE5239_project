@@ -1,9 +1,11 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from criterion import SoftDiceLoss
+from criterion import SegmentationLoss
 from tqdm import tqdm
 from pathlib import Path
+from config import Config
+from peft import LoraConfig, get_peft_model, FourierFTConfig, FourierFTModel, AdaLoraModel, AdaLoraConfig
 
 def get_mask(image, input_point, predictor):
 
@@ -58,32 +60,78 @@ def get_batched_mask(image, input_point, predictor):
     )
 
     prd_masks = predictor._transforms.postprocess_masks(low_res_masks, predictor._orig_hw[-1])# Upscale the masks to the original image resolution
-    prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
+    #prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
     return prd_masks.squeeze()
+
+def get_lora_model(model):
+
+    cfg = Config().parse()
+    if cfg.target_layers:
+        target_modules=['qkv','q_proj', 'v_proj', 'k_proj', 'out_proj']
+    else:
+        target_modules=['q_proj', 'k_proj']
+
+
+    if(cfg.peft == 'lora'):
+        print("Using LoRA")
+        lora_config = LoraConfig(
+            r=cfg.lora_rank,
+            lora_alpha=32,
+            target_modules=target_modules,
+            lora_dropout=0.1,
+            use_rslora=True
+        )
+        model = get_peft_model(model, lora_config)
+
+    elif(cfg.peft == "pissa"):
+        print("Using PISSA")
+        pissa_config = LoraConfig(
+        init_lora_weights="pissa", # Configure the initialization method to "pissa", which may take several minutes to execute SVD on the pre-trained model.
+        #init_lora_weights="pissa_niter_4", # Initialize the PiSSA with fast SVD, which completes in just a few seconds.
+        r=cfg.lora_rank,
+        lora_alpha=32,
+        lora_dropout=0, # Since the component of the PiSSA adapter are the principal singular values and vectors, dropout should be set to 0 to avoid random discarding.
+        target_modules=target_modules,
+        )
+        model = get_peft_model(model, pissa_config)
+
+
+    elif(cfg.peft == 'dora'):
+        print("Using LoRA")
+        lora_config = LoraConfig(
+            r=cfg.lora_rank,
+            lora_alpha=32,
+            target_modules=target_modules,
+            lora_dropout=0.1,
+            use_rslora=True,
+            use_dora=True
+        )
+        model = get_peft_model(model, lora_config)
+    
+    return model
+
 
 
 def test_model(predictor, test_loader):
     predictor.model.eval()
     avg_loss = 0
-    loss_fun = SoftDiceLoss()
+    loss_fun = SegmentationLoss()
     
     for image, mask, input_point in test_loader:
 
-        prd_mask = get_mask(image, input_point, predictor)
+        prd_mask = get_batched_mask(image, input_point, predictor)
 
-        prd_mask = torch.round(prd_mask)
-
-        avg_loss += loss_fun(prd_mask, mask)
+        avg_loss += loss_fun(prd_mask.squeeze(), mask.squeeze()).item()
             
-    avg_loss = avg_loss.item() / len(test_loader)
-    print(f"--- Validation DICE loss: {avg_loss:3f} ---")
+    avg_loss = avg_loss / len(test_loader)
+    print(f"--- Validation loss: {avg_loss:3f} ---")
     
     return avg_loss
 
-def plot_examples(predictor, test_dataset, slices, save_path):
+def plot_examples(predictor, test_dataset, slices, save_path, epoch):
     predictor.model.eval()
     print("-"*3+"Plotting examples"+"-"*3)
-    loss_fun = SoftDiceLoss()
+    loss_fun = SegmentationLoss()
     fs = 16
     j = 0
     for i in slices:
@@ -91,10 +139,12 @@ def plot_examples(predictor, test_dataset, slices, save_path):
             continue
         image, mask, input_point = test_dataset[i]
 
-        prd_mask = get_mask(image, input_point, predictor)
+        prd_mask = get_batched_mask(image, input_point, predictor)
+
+        prd_mask = torch.sigmoid(prd_mask)
         prd_mask = torch.round(prd_mask).squeeze()
 
-        loss = loss_fun(prd_mask, mask)
+        loss = loss_fun.dice_loss(prd_mask, mask)
 
         fig, ax = plt.subplots(1,3,figsize = (10,4))
         plt.gray()
@@ -112,7 +162,7 @@ def plot_examples(predictor, test_dataset, slices, save_path):
             ax.tick_params(axis='y', length=0)
 
         fig.tight_layout()
-        fig.savefig(save_path / f"out_{j}.png")
+        fig.savefig(save_path / f"out_{j}_{epoch}.png")
         plt.close("all")
         j += 1
         
@@ -173,3 +223,11 @@ def optimizer_state_size_mb(optimizer):
             if torch.is_tensor(v):
                 total += v.numel() * v.element_size()
     return total / 1024**2
+
+
+def count_optimizer_params(optimizer):
+    """
+    Calculates the total number of parameters managed by a PyTorch optimizer.
+    """
+    total_params = sum(p.numel() for group in optimizer.param_groups for p in group['params'] if p.grad is not None)
+    return total_params

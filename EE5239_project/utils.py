@@ -5,7 +5,12 @@ from criterion import SegmentationLoss
 from tqdm import tqdm
 from pathlib import Path
 from config import Config
-from peft import LoraConfig, get_peft_model, FourierFTConfig, FourierFTModel, AdaLoraModel, AdaLoraConfig
+from peft import LoraConfig, get_peft_model
+import io
+import wandb
+from PIL import Image
+from galore_torch import GaLoreAdamW
+
 
 def get_mask(image, input_point, predictor):
 
@@ -63,13 +68,31 @@ def get_batched_mask(image, input_point, predictor):
     #prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
     return prd_masks.squeeze()
 
+layers_list_long = [
+    'qkv',
+    'q_proj', 
+    'v_proj', 
+    'k_proj', 
+    'out_proj', 
+    'mlp.layers.0', 
+    'mlp.layers.1', 
+    'iou_prediction_head.layers.0',
+    'iou_prediction_head.layers.1',
+    'iou_prediction_head.layers.2', 
+    'pred_obj_score_head.layers.0',
+    'pred_obj_score_head.layers.1',
+    'pred_obj_score_head.layers.2', 
+    'obj_ptr_proj.layers.0',
+    'obj_ptr_proj.layers.1',
+    'obj_ptr_proj.layers.2']
+
 def get_lora_model(model):
 
     cfg = Config().parse()
     if cfg.target_layers:
-        target_modules=['qkv','q_proj', 'v_proj', 'k_proj', 'out_proj']
+        target_modules=layers_list_long
     else:
-        target_modules=['q_proj', 'k_proj']
+        target_modules=['q_proj', 'k_proj', 'v_proj', 'qkv']
 
 
     if(cfg.peft == 'lora'):
@@ -103,13 +126,40 @@ def get_lora_model(model):
             lora_alpha=32,
             target_modules=target_modules,
             lora_dropout=0.1,
-            use_rslora=True,
+            #use_rslora=True,
             use_dora=True
         )
         model = get_peft_model(model, lora_config)
     
     return model
 
+def get_galore_optimizer(model):
+
+    cfg = Config().parse()
+    if cfg.target_layers:
+        target_modules_list=layers_list_long
+    else:
+        target_modules_list=['q_proj', 'k_proj', 'v_proj', 'qkv']
+
+    galore_params = []
+    for module_name, module in model.named_modules():
+        if not isinstance(module, torch.nn.Linear):
+            continue
+
+        if not any(target_key in module_name for target_key in target_modules_list):
+            continue
+        
+        print('enable GaLore for weights in module: ', module_name)
+        galore_params.append(module.weight)
+    id_galore_params = [id(p) for p in galore_params]
+    # make parameters without "rank" to another group
+    regular_params = [p for p in model.parameters() if id(p) not in id_galore_params]
+    # then call galore_adamw
+    param_groups = [{'params': regular_params}, 
+                    {'params': galore_params, 'rank': cfg.lora_rank, 'update_proj_gap': 200, 'proj_type': 'std'}]
+    
+    optimizer = GaLoreAdamW(param_groups, lr=cfg.lr, weight_decay=4e-5)
+    return optimizer
 
 
 def test_model(predictor, test_loader):
@@ -130,6 +180,7 @@ def test_model(predictor, test_loader):
 
 def plot_examples(predictor, test_dataset, slices, save_path, epoch):
     predictor.model.eval()
+    cfg = Config().parse()
     print("-"*3+"Plotting examples"+"-"*3)
     loss_fun = SegmentationLoss()
     fs = 16
@@ -153,7 +204,7 @@ def plot_examples(predictor, test_dataset, slices, save_path, epoch):
         ax[1].imshow(mask.cpu().detach())
         ax[1].set_title("True mask", fontsize = fs)
         ax[2].imshow(prd_mask.cpu().detach())
-        ax[2].set_title(f"Pred mask | Dice = {1-loss:.2f}", fontsize = fs)
+        ax[2].set_title(f"Predicted mask (epoch {epoch}) \n Dice loss = {loss:.2f}", fontsize = fs)
 
         for ax in fig.get_axes():
             ax.set_xticklabels([])
@@ -162,9 +213,17 @@ def plot_examples(predictor, test_dataset, slices, save_path, epoch):
             ax.tick_params(axis='y', length=0)
 
         fig.tight_layout()
-        fig.savefig(save_path / f"out_{j}_{epoch}.png")
-        plt.close("all")
+        # fig.savefig(save_path / f"out_{j}_{epoch}.png")
+        # plt.close("all")
         j += 1
+
+        if cfg.wandb:
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png')
+            buf.seek(0)
+            wandb.log(({"epoch": epoch, f"example_{j}": wandb.Image(Image.open(buf))}))
+        
+        plt.close("all")
         
 
 
@@ -202,6 +261,7 @@ def print_trainable_parameters(model):
     print(
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param:.2f}"
     )
+    return trainable_params, all_param, 100 * trainable_params / all_param
 
 def write_dataset(dataset, path):
     print("Writing dataset")

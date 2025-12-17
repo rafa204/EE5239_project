@@ -8,6 +8,7 @@ class Config:
         
         #Setup parameters
         self.parser.add_argument('--name', type=str, default='test', help='results file directory')
+        self.parser.add_argument('--wandb_group', type=str, default='test', help='results file directory')
         self.parser.add_argument('--write_data', type=int, default=0, help='Rewrite dataset')
         self.parser.add_argument('--peft', type=str, default='None', help='which type of peft')
         self.parser.add_argument('--lora_rank', type=int, default=16, help='Rank of LoRA matrices')
@@ -31,7 +32,7 @@ class Config:
 
         #other
         self.parser.add_argument('--tqdm', type=int, default=1, help='Loading bar or not (bar is bad for slurm)')
-        self.parser.add_argument('--plot', type=int, default=0, help='Plot example results')
+        self.parser.add_argument('--plot', type=int, default=1, help='Plot example results')
         self.parser.add_argument('--wandb', type=int, default=0, help='Send to WANDB')
     
 

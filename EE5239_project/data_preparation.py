@@ -29,6 +29,7 @@ class BRATS_dataset(Dataset):
             self.num_volumes = num_volumes
 
         self.num_slices = num_slices
+        
 
     def __len__(self):
         if self.num_slices is None: 
@@ -78,25 +79,27 @@ class BRATS_dataset_2D(Dataset):
         self.path = Path(path)
         self.device = device
         self.subdirs = [p for p in self.path.iterdir() if p.is_dir()]
+        self.val_indices = []
 
     def __len__(self):
         return len(self.subdirs)
 
-    def transform(self, image, mask):
+    def transform(self, image, mask, is_val = False):
 
         cx, cy = mask.shape[0]//2,  mask.shape[1]//2
         mask = mask[cx-80:cx+80, cy-112:cy+112]
         image = image[cx-80:cx+80, cy-112:cy+112, :]
 
-        # Random horizontal flipping
-        if random.random() > 0.5:
-            image = np.flip(image, axis = 0).copy()
-            mask = np.flip(mask, axis = 0).copy()
+        if not is_val:
+            # Random horizontal flipping
+            if random.random() > 0.5:
+                image = np.flip(image, axis = 0).copy()
+                mask = np.flip(mask, axis = 0).copy()
 
-        # Random vertical flipping
-        if random.random() > 0.5:
-            image = np.flip(image, axis = 1).copy()
-            mask = np.flip(mask, axis = 1).copy()
+            # Random vertical flipping
+            if random.random() > 0.5:
+                image = np.flip(image, axis = 1).copy()
+                mask = np.flip(mask, axis = 1).copy()
 
         return image, mask
 
@@ -105,7 +108,8 @@ class BRATS_dataset_2D(Dataset):
         img = np.load(self.subdirs[idx] / "imgs.npy")
         mask = np.load(self.subdirs[idx] / "mask.npy")
 
-        img, mask = self.transform(img, mask)
+        is_val = idx in self.val_indices
+        img, mask = self.transform(img, mask, is_val)
 
         flat_indices = np.flatnonzero(mask)
         rng = np.random.default_rng(idx)

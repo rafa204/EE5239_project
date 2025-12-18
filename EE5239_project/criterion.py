@@ -5,7 +5,7 @@ from config import Config
 class SegmentationLoss(_Loss):
     """
     Segmentation loss function used to train SAM2
-    This function can use a mixture of Dice and binary
+    This function can use a mixture of soft Dice and binary
     corss entropy loss. For our project, we stick to just Dice loss
     """
 
@@ -17,6 +17,7 @@ class SegmentationLoss(_Loss):
         self.bce_weight = cfg.bce_weight
 
     def dice_loss(self,y_pred, y_true, eps=1e-8):
+        """Soft Dice Loss"""
         intersection = torch.sum(torch.mul(y_pred, y_true)) 
         union = torch.sum(torch.mul(y_pred, y_pred)) + torch.sum(torch.mul(y_true, y_true)) + eps
         dice = 2 * intersection / union 

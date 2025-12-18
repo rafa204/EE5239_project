@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+#Configuration for training SAM2 model
+
 class Config:
     def __init__(self):
         self.parser = argparse.ArgumentParser()

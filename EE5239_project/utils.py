@@ -48,6 +48,7 @@ def get_batched_mask(image, input_point, predictor):
     #prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
     return prd_masks.squeeze()
 
+#We define some global parameters for the target layers
 layers_list_short = ['q_proj', 'k_proj', 'v_proj', 'qkv']
 layers_list_long = [
     'qkv',

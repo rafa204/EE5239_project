@@ -1,4 +1,4 @@
-### EE5239 project
+# EE5239 project
 If you are grading the EE5239 project, please see the readme inside the
 of the EE5239_project folder. It has further instructions on how to run our code. What follows is the README for the original SAM2 repository.
 

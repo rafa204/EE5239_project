@@ -5,9 +5,9 @@ Our project involved fine tuning the SAM2 model by META on the BRATS 2020 datase
 - Clone the entire project from [here.](https://github.com/rafa204/EE5239_project) This contains both our code and the SAM2 tools, some of which
 have been edited for our work. The project folder is called EE5239_project, 
 but there is an inner folder called EE5239_project (this folder).
-- Install the EE5239_project/requirements.txt
+- Install EE5239_project/requirements.txt
 - Download the dataset. To run this on MSI (Minnesota Supercomputing Institute), find the folder: 
-/scratch.global/training_data copy it to EE5239_project/EE5239_project
+/scratch.global/training_data copy it to the inner EE5239_project folder.
 This data has already been prepared.
 - Download the SAM2 pre-trained weights. You can do this by running the checkpoints/download_ckpts.sh file.
 

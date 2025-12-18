@@ -1,5 +1,5 @@
-### EE5239 project
-# Rafael Avelar, Leonidas Tsigkounakis
+# EE5239 project
+### Rafael Avelar, Leonidas Tsigkounakis
 
 Our project involved fine tuning the SAM2 model by META on the BRATS 2020 dataset. This folder contains only our custom code used for the project. To run our code, you must also get the tools from the SAM2 model repository
 - Clone the entire project from [here.](https://github.com/rafa204/EE5239_project) This contains both our code and the SAM2 tools, some of which

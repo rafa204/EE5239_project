@@ -1,6 +1,6 @@
 # EE5239 project
 If you are grading the EE5239 project, please see the readme inside the
-of the EE5239_project folder. That folder contains the custom code we used for our project. It also has further instructions on how to run our code. What follows is the README for the original SAM2 repository.
+of the EE5239_project folder. That folder contains the custom code we used for our project. It also has further instructions on how to run our code. This repository was forker from the SAM2 repository. What follows is the README for the original SAM2 repository.
 
 
 # SAM 2: Segment Anything in Images and Videos

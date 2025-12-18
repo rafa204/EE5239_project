@@ -3,7 +3,7 @@ import subprocess
 from config import Config
 
 # ----------------------------
-# Helper file to define hyperparameter sweeps and submit them through sbatch
+# Helper file to define hyperparameter sweeps and submit them through sbatch in MSI
 # ----------------------------
 
 default_cfg = vars(Config().parse())

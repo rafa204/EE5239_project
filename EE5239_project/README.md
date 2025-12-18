@@ -16,10 +16,10 @@ To fine tune SAM2, run the train.py file. You can see the results by connecting
 to you weights and biases account, as the results are logged there.
 Change the wandb.init configurations to what is needed. The most important command line parameters are as follows:
 
---name: name of the folder to which results are saved, and/or name of wandb run
---peft: "None", "lora", "dora", "pissa" or "galore". These are the peft algorithms tested
---lr: learning rate 
---batch_size: batch size 
---LR_sch: 0 or 1, whether to use Cosine annealing lr scheduler  
---lora_rank: rank parameter for low-rank fine tuning algorithms.
---wandb_group: name of weights and biases group to save results to
+--name: name of the folder to which results are saved, and/or name of wandb run <br>
+--peft: "None", "lora", "dora", "pissa" or "galore". These are the peft algorithms tested <br>
+--lr: learning rate  <br>
+--batch_size: batch size  <br>
+--LR_sch: 0 or 1, whether to use Cosine annealing lr scheduler   <br>
+--lora_rank: rank parameter for low-rank fine tuning algorithms. <br>
+--wandb_group: name of weights and biases group to save results to <br>

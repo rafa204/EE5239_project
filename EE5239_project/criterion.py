@@ -3,6 +3,11 @@ from torch.nn.modules.loss import _Loss
 from config import Config
 
 class SegmentationLoss(_Loss):
+    """
+    Segmentation loss function used to train SAM2
+    This function can use a mixture of Dice and binary
+    corss entropy loss. For our project, we stick to just Dice loss
+    """
 
     def __init__(self, dice_weight = 1, bce_weight = 0):
         super(SegmentationLoss, self).__init__()

@@ -12,7 +12,7 @@ data_cache = {}
 #Define dataset for the training
 class BRATS_dataset(Dataset):
     """
-    BRATS 2020 2.5D dataset
+    Class to handle the volumes of the BRATS 2020 dataset
     """
     def __init__(self, dataset_path, device, num_volumes = None, slices_per_volume = 1, num_slices = None):
         self.dataset_path = dataset_path
@@ -74,6 +74,10 @@ class BRATS_dataset(Dataset):
     
 
 class BRATS_dataset_2D(Dataset):
+    """
+    Class to handle individual 2D slices of the BRATS 2020 dataset once
+    they have been prepared
+    """
 
     def __init__(self, path, device):
         self.path = Path(path)

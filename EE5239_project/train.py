@@ -86,16 +86,17 @@ def main():
 
     rng = np.random.default_rng(5)
     plot_indices = rng.choice(np.arange(0, len(val_dataset)), size=5, replace=False)
-    best_val_loss = np.inf
-    extra_val_epochs = [0,1,2,3,4,5]
+    extra_val_epochs = [0,1,2,3,4,5] #Record all validation epochs in this list, beyond the normal val freq
 
     torch.cuda.reset_peak_memory_stats()
 
     print("*"*20 + "  Starting training  " + "*"*20)
     for epoch in range(cfg.n_epochs):
-        
         avg_loss = 0
-        #Validation before training so we can see the performance of the default model
+
+        #========= Validation ===========
+
+        #We validate before training so we can see the performance of the default model
         if cfg.val and (epoch % cfg.val_freq == 0 or epoch == cfg.n_epochs - 1 or epoch in extra_val_epochs):
             val_loss = test_model(predictor, val_loader)
             val_losses.append([val_loss,epoch])
@@ -103,6 +104,7 @@ def main():
             np.save(results_path / "val_loss.npy", np.array(val_losses))
             plot_examples(predictor, val_dataset, plot_indices, results_path, epoch)     
 
+        #========= Training ===========
         predictor.model.train()
 
         if(cfg.tqdm):
@@ -119,6 +121,8 @@ def main():
 
             avg_loss+=loss.item()/len(train_loader)
 
+        #========= Logging  ===========
+        
         print(f"------ Epoch {epoch} ------")
         print(f"train loss = {avg_loss:.3f}" + "---")
         trn_losses.append([avg_loss,epoch])

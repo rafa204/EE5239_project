@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from criterion import SegmentationLoss
 from tqdm import tqdm
-from pathlib import Path
 from config import Config
 from peft import LoraConfig, get_peft_model
 import io
@@ -12,32 +11,13 @@ from PIL import Image
 from galore_torch import GaLoreAdamW
 
 
-def get_mask(image, input_point, predictor):
-
-    if torch.is_tensor(image):
-        image = image.squeeze().cpu().numpy()
-        input_point = input_point.squeeze(dim=0)
-
-    input_label = np.array([1])
-
-    predictor.set_image(image) # apply SAM image encoder to the image
-
-    # prompt encoding
-    mask_input, unnorm_coords, labels, unnorm_box = predictor._prep_prompts(input_point, input_label, box=None, mask_logits=None, normalize_coords=True)
-    sparse_embeddings, dense_embeddings = predictor.model.sam_prompt_encoder(points=(unnorm_coords, labels),boxes=None,masks=None,)
-
-    # mask decoder
-    batched_mode = unnorm_coords.shape[0] > 1 # multi object prediction
-    high_res_features = [feat_level[-1].unsqueeze(0) for feat_level in predictor._features["high_res_feats"]]
-    low_res_masks, prd_scores, _, _ = predictor.model.sam_mask_decoder(image_embeddings=predictor._features["image_embed"][-1].unsqueeze(0),image_pe=predictor.model.sam_prompt_encoder.get_dense_pe(),sparse_prompt_embeddings=sparse_embeddings,dense_prompt_embeddings=dense_embeddings,multimask_output=True,repeat_image=batched_mode,high_res_features=high_res_features,)
-    prd_masks = predictor._transforms.postprocess_masks(low_res_masks, predictor._orig_hw[-1])# Upscale the masks to the original image resolution
-
-    idx = torch.argmax(prd_scores)
-    prd_mask = torch.sigmoid(prd_masks[:, idx])# Turn logit map to probability map
-
-    return prd_mask
-
 def get_batched_mask(image, input_point, predictor):
+    """
+    Helper function take an image and prompt batch as input and 
+    use SAM2 to produce corresponding masks.
+    image (torch.Tensor) [nbatches, 3, H, W]: Input image
+    input_point (np array) [nbatches, 2]: Prompts
+    """
 
     if image.ndim == 4: #Batched mode
         image = [im.cpu().numpy() for im in image]
@@ -68,6 +48,7 @@ def get_batched_mask(image, input_point, predictor):
     #prd_masks = torch.sigmoid(prd_masks)# Turn logit map to probability map
     return prd_masks.squeeze()
 
+layers_list_short = ['q_proj', 'k_proj', 'v_proj', 'qkv']
 layers_list_long = [
     'qkv',
     'q_proj', 
@@ -88,11 +69,19 @@ layers_list_long = [
 
 def get_lora_model(model):
 
+    """
+    Helper function to apply LoRA or variations to a given model
+    Input: 
+        model (Torch module): torch model on which we will apply the lora layers
+    Output:
+        same model with LoRA layers
+    """
+
     cfg = Config().parse()
     if cfg.target_layers:
         target_modules=layers_list_long
     else:
-        target_modules=['q_proj', 'k_proj', 'v_proj', 'qkv']
+        target_modules=layers_list_short
 
 
     if(cfg.peft == 'lora'):
@@ -120,49 +109,44 @@ def get_lora_model(model):
 
 
     elif(cfg.peft == 'dora'):
-        print("Using LoRA")
+        print("Using DoRA")
         lora_config = LoraConfig(
             r=cfg.lora_rank,
             lora_alpha=32,
             target_modules=target_modules,
             lora_dropout=0.1,
-            #use_rslora=True,
+            use_rslora=True,
             use_dora=True
         )
         model = get_peft_model(model, lora_config)
+
+    elif(cfg.peft == 'galore'):
+        print("Using GaLore")
+        for name, param in model.named_parameters():
+            param.requires_grad = any(key in name for key in target_modules)
+
     
     return model
 
 def get_galore_optimizer(model):
-
+    """
+    If using galore, this gets the Galore optimizer.
+    The input model should have frozen all layers on which Galore should not be applied
+    """
     cfg = Config().parse()
-    if cfg.target_layers:
-        target_modules_list=layers_list_long
-    else:
-        target_modules_list=['q_proj', 'k_proj', 'v_proj', 'qkv']
-
-    galore_params = []
-    for module_name, module in model.named_modules():
-        if not isinstance(module, torch.nn.Linear):
-            continue
-
-        if not any(target_key in module_name for target_key in target_modules_list):
-            continue
-        
-        print('enable GaLore for weights in module: ', module_name)
-        galore_params.append(module.weight)
-    id_galore_params = [id(p) for p in galore_params]
-    # make parameters without "rank" to another group
-    regular_params = [p for p in model.parameters() if id(p) not in id_galore_params]
+    galore_params = [p for p in model.parameters() if (p.requires_grad and p.ndim >= 2)]
+    regular_params = [p for p in model.parameters() if (p.requires_grad and p.ndim == 1)]
     # then call galore_adamw
-    param_groups = [{'params': regular_params}, 
-                    {'params': galore_params, 'rank': cfg.lora_rank, 'update_proj_gap': 200, 'proj_type': 'std'}]
+    param_groups = [{'params': regular_params}, {'params': galore_params, 'rank': cfg.lora_rank, 'update_proj_gap': 200, 'scale':0.25, 'proj_type': 'std'}]
     
     optimizer = GaLoreAdamW(param_groups, lr=cfg.lr, weight_decay=4e-5)
     return optimizer
 
 
 def test_model(predictor, test_loader):
+    """
+    Test SAM2 on a testing set
+    """
     predictor.model.eval()
     avg_loss = 0
     loss_fun = SegmentationLoss()
@@ -179,6 +163,7 @@ def test_model(predictor, test_loader):
     return avg_loss
 
 def plot_examples(predictor, test_dataset, slices, save_path, epoch):
+    """Plot example images from the BRATS 2020 dataset"""
     predictor.model.eval()
     cfg = Config().parse()
     print("-"*3+"Plotting examples"+"-"*3)

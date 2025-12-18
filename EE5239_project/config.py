@@ -18,9 +18,9 @@ class Config:
         # Hyperparameters for leaning
         self.parser.add_argument('--n_data', type=int, default=369, help='number of data points')
         self.parser.add_argument('--sl_per_vol', type=int, default=3, help='number of slices per volume')
-        self.parser.add_argument('--n_train', type=int, default=100, help='training data ratio')
-        self.parser.add_argument('--n_val', type=int, default=100, help='validation data ratio')
-        self.parser.add_argument('--n_test', type=int, default=0, help='testing data ratio')
+        self.parser.add_argument('--n_train', type=int, default=100, help='number of training slices')
+        self.parser.add_argument('--n_val', type=int, default=100, help='number of validation slices')
+        self.parser.add_argument('--n_test', type=int, default=0, help='number of testing slices')
         self.parser.add_argument('--n_epochs', type=int, default=100, help='number of epochs to train')
         self.parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
         self.parser.add_argument('--batch_size', type=int, default=1, help='batch size')

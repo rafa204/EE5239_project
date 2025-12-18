@@ -3,7 +3,7 @@ import subprocess
 from config import Config
 
 # ----------------------------
-# Define your parameter sweeps
+# Helper file to define hyperparameter sweeps and submit them through sbatch
 # ----------------------------
 
 default_cfg = vars(Config().parse())
@@ -13,12 +13,17 @@ param_list = ["name", "lr", "batch_size","LR_sch","n_train","n_val","peft","lora
 n = 256
 bs = 2
 lr_list = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3]
-lr_def = 5e-4
+lr_def = 1e-4
 rank_def = 16
-rank_list = [1,8,64,128]
+rank_list = [1,8,64,128,2,4,32]
 group1 = "LR_search_0"
-group2 = "rank_search_0"
+group2 = "rank_search_1"
 configs = []
+
+#Add parameter sweepts to the sbatch file
+
+for i, lr in enumerate(lr_list):
+    configs.append({"name": f"galore_rank_{rank_def}_lr_{lr:.0e}", "peft": "galore", "batch_size": bs, "model": "l", "n_train": n, "lr": lr,"wandb_group":group1,})
 
 for i, lr in enumerate(lr_list):
     configs.append({"name": f"full_lr_{lr:.0e}", "peft": "None", "batch_size": bs, "model": "l", "n_train": n, "lr": lr,"wandb_group":group1,})
@@ -27,9 +32,10 @@ for i, lr in enumerate(lr_list):
     configs.append({"name": f"pissa_rank_{rank_def}_lr_{lr:.0e}", "peft": "pissa", "batch_size": bs, "model": "l", "n_train": n, "lr": lr,"wandb_group":group1,})
 
 for i, rank in enumerate(rank_list):
-    configs.append({"name": f"lora_rank_{rank}_lr_{lr_def:.0e}", "peft": "lora", "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
-    configs.append({"name": f"dora_rank_{rank}_lr_{lr_def:.0e}", "peft": "dora", "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
-    configs.append({"name": f"pissa_rank_{rank}_lr_{lr_def:.0e}", "peft": "pissa", "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
+    configs.append({"name": f"lora_rank_{rank}_lr_{1e-4:.0e}", "peft": "lora", "lora_rank": rank,  "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
+    configs.append({"name": f"dora_rank_{rank}_lr_{1e-4:.0e}", "peft": "dora", "lora_rank": rank,  "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
+    configs.append({"name": f"pissa_rank_{rank}_lr_{1e-4:.0e}", "peft": "pissa", "lora_rank": rank, "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
+    configs.append({"name": f"galore_rank_{rank}_lr_{5e-4:.0e}", "peft": "galore", "lora_rank": rank, "batch_size": bs, "model": "l", "n_train": n, "lr": lr_def,"wandb_group":group2,})
 
 
 TEMPLATE = "run.sh"
